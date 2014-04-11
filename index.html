@@ -61,6 +61,11 @@
 </head>
 <body>
 	<div id="viz">
+        <audio loop id="back"  src="OldSkool.mp3" autoplay></audio>
+        <div>
+            <button onclick="document.getElementById('back').play()">Play</button>
+            <button onclick="document.getElementById('back').pause()">Pause</button>
+        </div>
 		<canvas id="analyser" width="1024" height="500"></canvas>
 		<canvas id="wavedisplay" width="1024" height="500"></canvas>
 	</div>

@@ -24,6 +24,8 @@ var rafID = null;
 var analyserContext = null;
 var canvasWidth, canvasHeight;
 var recIndex = 0;
+var backgroundMusic=null;
+var mixedOutput;
 
 /* TODO:
 
@@ -135,18 +137,50 @@ function toggleMono() {
     audioInput.connect(inputPoint);
 }
 
+/*
+ <canvas id="c"></canvas>
+ <audio src="back.webm" id="back"></audio>
+ <script>
+ navigator.getUserMedia('audio', gotAudio);
+ var streamRecorder;
+ function gotAudio(stream) {
+ var microphone = context.createMediaStreamSource(stream);
+ var backgroundMusic = context.createMediaElementSource(document.getElementById("back"));
+ var analyser = context.createAnalyser();
+ var mixedOutput = context.createMediaStreamDestination();
+ microphone.connect(analyser);
+ analyser.connect(mixedOutput);
+ backgroundMusic.connect(mixedOutput);
+ requestAnimationFrame(drawAnimation);
+
+ streamRecorder = mixedOutput.stream.record();
+ peerConnection.addStream(mixedOutput.stream);
+ }
+ </script>
+ */
+
 function gotStream(stream) {
     inputPoint = audioContext.createGain();
 
-    // Create an AudioNode from the stream.
+    // Create an AudioNode from the stream
     realAudioInput = audioContext.createMediaStreamSource(stream);
+
+    //Create an AudioNode for background Music
+    backgroundMusic = audioContext.createMediaElementSource(document.getElementById("back"));
+
+
     audioInput = realAudioInput;
+
+    //microphone.connect(analyser);
     audioInput.connect(inputPoint);
 
 //    audioInput = convertToMono( input );
 
     analyserNode = audioContext.createAnalyser();
+
+
     analyserNode.fftSize = 2048;
+
     inputPoint.connect( analyserNode );
 
     audioRecorder = new Recorder( inputPoint );
