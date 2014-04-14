@@ -25,7 +25,7 @@ var analyserContext = null;
 var canvasWidth, canvasHeight;
 var recIndex = 0;
 var backgroundMusic=null;
-var mixedOutput;
+var backgroundGain = null;
 
 /* TODO:
 
@@ -137,6 +137,30 @@ function toggleMono() {
     audioInput.connect(inputPoint);
 }
 
+function cloneAudioBuffer(audioBuffer){
+    var channels = [],
+        numChannels = audioBuffer.numberOfChannels;
+
+    //clone the underlying Float32Arrays
+    for (var i = 0; i < numChannels; i++){
+        channels[i] = new Float32Array(audioBuffer.getChannelData(i));
+    }
+
+    //create the new AudioBuffer (assuming AudioContext variable is in scope)
+    var newBuffer = context.createBuffer(
+        audioBuffer.numberOfChannels,
+        audioBuffer.length,
+        audioBuffer.sampleRate
+    );
+
+    //copy the cloned arrays to the new AudioBuffer
+    for (var i = 0; i < numChannels; i++){
+        newBuffer.getChannelData(i).set(channels[i]);
+    }
+
+    return newBuffer;
+}
+
 /*
  <canvas id="c"></canvas>
  <audio src="back.webm" id="back"></audio>
@@ -182,14 +206,20 @@ function gotStream(stream) {
     analyserNode.fftSize = 2048;
 
     inputPoint.connect( analyserNode );
-
+    backgroundMusic.connect(inputPoint);
     audioRecorder = new Recorder( inputPoint );
+
+    backgroundGain = audioContext.createGain();
+    backgroundGain.gain.value = 0.8;
+    backgroundMusic.connect( backgroundGain );
+    backgroundGain.connect( audioContext.destination );
 
     zeroGain = audioContext.createGain();
     zeroGain.gain.value = 0.0;
     inputPoint.connect( zeroGain );
     zeroGain.connect( audioContext.destination );
     updateAnalysers();
+
 }
 
 function initAudio() {
