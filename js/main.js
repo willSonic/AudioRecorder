@@ -1,17 +1,17 @@
 /* Copyright 2013 Chris Wilson
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 
 window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
@@ -25,13 +25,13 @@ var analyserContext = null;
 var canvasWidth, canvasHeight;
 var recIndex = 0;
 var backgroundMusic=null;
-var mixedOutput;
+var backgroundGain = null;
 
 /* TODO:
 
-- offer mono option
-- "Monitor input" switch
-*/
+ - offer mono option
+ - "Monitor input" switch
+ */
 
 function saveAudio() {
     audioRecorder.exportWAV( doneEncoding );
@@ -44,7 +44,7 @@ function gotBuffers( buffers ) {
 
     drawBuffer( canvas.width, canvas.height, canvas.getContext('2d'), buffers[0] );
 
-    // the ONLY time gotBuffers is called is right after a new recording is completed - 
+    // the ONLY time gotBuffers is called is right after a new recording is completed -
     // so here's where we should set up the download.
     audioRecorder.exportWAV( doneEncoding );
 }
@@ -100,7 +100,7 @@ function updateAnalysers(time) {
         var numBars = Math.round(canvasWidth / SPACING);
         var freqByteData = new Uint8Array(analyserNode.frequencyBinCount);
 
-        analyserNode.getByteFrequencyData(freqByteData); 
+        analyserNode.getByteFrequencyData(freqByteData);
 
         analyserContext.clearRect(0, 0, canvasWidth, canvasHeight);
         analyserContext.fillStyle = '#F6D565';
@@ -120,7 +120,7 @@ function updateAnalysers(time) {
             analyserContext.fillRect(i * SPACING, canvasHeight, BAR_WIDTH, -magnitude);
         }
     }
-    
+
     rafID = window.requestAnimationFrame( updateAnalysers );
 }
 
@@ -135,6 +135,30 @@ function toggleMono() {
     }
 
     audioInput.connect(inputPoint);
+}
+
+function cloneAudioBuffer(audioBuffer){
+    var channels = [],
+        numChannels = audioBuffer.numberOfChannels;
+
+    //clone the underlying Float32Arrays
+    for (var i = 0; i < numChannels; i++){
+        channels[i] = new Float32Array(audioBuffer.getChannelData(i));
+    }
+
+    //create the new AudioBuffer (assuming AudioContext variable is in scope)
+    var newBuffer = context.createBuffer(
+        audioBuffer.numberOfChannels,
+        audioBuffer.length,
+        audioBuffer.sampleRate
+    );
+
+    //copy the cloned arrays to the new AudioBuffer
+    for (var i = 0; i < numChannels; i++){
+        newBuffer.getChannelData(i).set(channels[i]);
+    }
+
+    return newBuffer;
 }
 
 /*
@@ -160,7 +184,7 @@ function toggleMono() {
  */
 
 function gotStream(stream) {
-    inputPoint = audioContext.createGain();
+    inputPoint     = audioContext.createGain();
 
     // Create an AudioNode from the stream
     realAudioInput = audioContext.createMediaStreamSource(stream);
@@ -182,28 +206,34 @@ function gotStream(stream) {
     analyserNode.fftSize = 2048;
 
     inputPoint.connect( analyserNode );
-
+    backgroundMusic.connect(inputPoint);
     audioRecorder = new Recorder( inputPoint );
+
+    backgroundGain = audioContext.createGain();
+    backgroundGain.gain.value = 0.8;
+    backgroundMusic.connect( backgroundGain );
+    backgroundGain.connect( audioContext.destination );
 
     zeroGain = audioContext.createGain();
     zeroGain.gain.value = 0.0;
     inputPoint.connect( zeroGain );
     zeroGain.connect( audioContext.destination );
     updateAnalysers();
+
 }
 
 function initAudio() {
-        if (!navigator.getUserMedia)
-            navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-        if (!navigator.cancelAnimationFrame)
-            navigator.cancelAnimationFrame = navigator.webkitCancelAnimationFrame || navigator.mozCancelAnimationFrame;
-        if (!navigator.requestAnimationFrame)
-            navigator.requestAnimationFrame = navigator.webkitRequestAnimationFrame || navigator.mozRequestAnimationFrame;
+            if (!navigator.getUserMedia)
+                navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+            if (!navigator.cancelAnimationFrame)
+                navigator.cancelAnimationFrame = navigator.webkitCancelAnimationFrame || navigator.mozCancelAnimationFrame;
+            if (!navigator.requestAnimationFrame)
+                navigator.requestAnimationFrame = navigator.webkitRequestAnimationFrame || navigator.mozRequestAnimationFrame;
 
-    navigator.getUserMedia({audio:true}, gotStream, function(e) {
-            alert('Error getting audio');
-            console.log(e);
-        });
+            navigator.getUserMedia({audio:true}, gotStream, function(e) {
+                alert('Error getting audio');
+                console.log(e);
+    });
 }
 
 window.addEventListener('load', initAudio );
